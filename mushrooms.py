@@ -5,6 +5,11 @@
 #     School of Information and Computer Science.
 
 from itertools import chain
+from pybrain import datasets as ds
+from pybrain.tools.shortcuts import buildNetwork
+from pybrain.structure.modules import SoftmaxLayer
+from pybrain.supervised.trainers import BackpropTrainer
+from pybrain.utilities import percentError
 
 def transpose(ls):
     return zip(*ls)
@@ -55,7 +60,46 @@ def prep(filename):
     gc = get_options_count(groups)
     inputs = [one_to_many(row, gc)
               for row in ixs]
-    return inputs, ys
+    return inputs, ys, gc
+
+def train(args):
+  inputs, ys, gc = args
+  row_length = len(inputs[0])
+  d = ds.ClassificationDataSet(
+      row_length, nb_classes=2, class_labels=['Poisonous',
+                                              'Edible'])
+  d.setField('input', inputs)
+  d.setField('target', ys)
+  test, train = d.splitWithProportion(.25)
+  test._convertToOneOfMany()
+  train._convertToOneOfMany()
+
+  hidden = row_length // 2
+  print "indim:", train.indim
+  net = buildNetwork(train.indim,
+                     hidden,
+                     train.outdim,
+                     outclass=SoftmaxLayer)
+  trainer = BackpropTrainer(net,
+                            dataset=train,
+                            momentum=0.0,
+                            learningrate=0.1,
+                            verbose=True,
+                            weightdecay=0.0)
+  for i in xrange(20):
+      trainer.trainEpochs(1)
+      trnresult = percentError(trainer.testOnClassData(),
+                                train['class'])
+      tstresult = percentError(
+              trainer.testOnClassData(dataset=test),
+              test['class'])
+      print "epoch: %4d" % trainer.totalepochs, \
+            "  train error: %5.2f%%" % trnresult, \
+            "  test error: %5.2f%%" % tstresult
+  return net, gc
+
+def classify(network, gc, mushroom):
+  return network.activate(one_to_many(mushroom, gc))
 
 def test_prep():
     input_list = [[1, 2, 3, 4, 5, 4, 6],
@@ -94,56 +138,16 @@ def test_prep():
                    [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0],
                    [1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0]]
 
-def test_train():
-    from pybrain import datasets as ds
-    from pybrain.tools.shortcuts import buildNetwork
-    from pybrain.structure.modules import SoftmaxLayer
-    from pybrain.supervised.trainers import BackpropTrainer
-    from pybrain.utilities import percentError
-
-    inputs, ys = prep("raw_data")
-    row_length = len(inputs[0])
-    d = ds.ClassificationDataSet(
-        row_length, nb_classes=2, class_labels=['Poisonous',
-                                                'Edible'])
-    d.setField('input', inputs)
-    d.setField('target', ys)
-    test, train = d.splitWithProportion(.25)
-    test._convertToOneOfMany()
-    train._convertToOneOfMany()
-
-    hidden = row_length // 2
-    net = buildNetwork(train.indim,
-                       hidden,
-                       train.outdim,
-                       outclass=SoftmaxLayer)
-    trainer = BackpropTrainer(net,
-                              dataset=train,
-                              momentum=0.0,
-                              learningrate=0.1,
-                              verbose=True,
-                              weightdecay=0.0)
-    #import pdb
-    #pdb.set_trace()
-    for i in xrange(20):
-        trainer.trainEpochs(1)
-        trnresult = percentError(trainer.testOnClassData(),
-                                  train['class'])
-        tstresult = percentError(
-                trainer.testOnClassData(dataset=test),
-                test['class'])
-        print "epoch: %4d" % trainer.totalepochs, \
-              "  train error: %5.2f%%" % trnresult, \
-              "  test error: %5.2f%%" % tstresult
-    return d
-
 def test_get_singleton_indices():
     assert get_singleton_indices([[1, 2], [3], [4, 5, 4], [6]]) == [1, 3]
 
 def test():
     test_get_singleton_indices()
     test_prep()
-    test_train()
+    train(prep("raw_data"))
     print "All OK."
 
-test()
+
+if __name__ == "__main__":
+  # test()
+  train(prep("raw_data"))
