@@ -1,0 +1,11 @@
+Neural network using PyBrain which learns to identify poisonous v. edible mushrooms based on 22 'shroom attributes.  
+  
+Raw data imported from:  
+  
+Frank, A. & Asuncion, A. (2010). UCI Machine Learning Repository
+[http://archive.ics.uci.edu/ml]. Irvine, CA: University of California,
+School of Information and Computer Science.  
+  
+Collaborative project by Estevo U. C. Castro and Danielle E. Sucher.  
+  
+NOTE: DO NOT USE THIS WHEN ACTUALLY MUSHROOM HUNTING. YOU MIGHT DIE.
